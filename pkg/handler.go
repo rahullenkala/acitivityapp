@@ -156,6 +156,7 @@ func (app *ActivityApp) GetUserActivities(ctx context.Context, uReq *pb.UserActi
 	var query primitive.D
 	var resp pb.UserActivityResponse
 	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
+
 	startTime, endTime := getStartAndEndOfDay(uReq.Time)
 
 	if uReq.Batch {

@@ -6,6 +6,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 //ActivityApp implements all the methods defined by  acitivity app service
@@ -116,6 +117,16 @@ func NewDataBase(dbURL string, dbName string) *DataBase {
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
+	}
+	_, indexerr := client.Database(dbName).Collection("user").Indexes().CreateOne(
+		context.Background(),
+		mongo.IndexModel{
+			Keys:    bsonx.Doc{{"phone", bsonx.Int32(1)}, {"type", bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+	if indexerr != nil {
+		log.Fatal(indexerr)
 	}
 	db := &DataBase{
 		client: client,
