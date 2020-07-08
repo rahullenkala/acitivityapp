@@ -1,24 +1,32 @@
 package activityapp
 
-import "go.mongodb.org/mongo-driver/mongo"
+import (
+	"context"
+	"log"
 
-//ActivityApp ...
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+//ActivityApp implements all the methods defined by  acitivity app service
 type ActivityApp struct {
-	Db *DataBase
+	db *DataBase
 }
 
-//DataBase ...
+//DataBase defines basic attributes and instance of the db used by Acitivity app
 type DataBase struct {
-	Client *mongo.Client
-	DbName string
+	client *mongo.Client
+	dbName string
 }
 
+//UserData represents a user record in the database
 type UserData struct {
 	Name  string
 	Email string
 	Phone string
 }
 
+//ActivityRecord represents a activity record in the database
 type ActivityRecord struct {
 	Phone     string
 	Status    bool
@@ -27,6 +35,7 @@ type ActivityRecord struct {
 	Timestamp int64
 }
 
+//UserActivity defines an iterfaces for various activites supported by this application
 type UserActivity interface {
 	isValid() bool
 	isDone() bool
@@ -98,4 +107,26 @@ func (r read) isValid() bool {
 		return true
 	}
 	return false
+}
+
+//NewDataBase return a new db instance
+func NewDataBase(dbURL string, dbName string) *DataBase {
+
+	clientOptions := options.Client().ApplyURI(dbURL)
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+	db := &DataBase{
+		client: client,
+		dbName: dbName,
+	}
+	return db
+}
+
+//NewApp return a new Activityapp instance
+func NewApp(db *DataBase) *ActivityApp {
+	return &ActivityApp{
+		db: db,
+	}
 }

@@ -18,7 +18,7 @@ import (
 //CreateUser creates a user and adds the record to db
 func (app *ActivityApp) CreateUser(ctx context.Context, usr *pb.User) (*pb.Response, error) {
 
-	userCollection := app.Db.Client.Database(app.Db.DbName).Collection("user")
+	userCollection := app.db.client.Database(app.db.dbName).Collection("user")
 	insertResult, err := userCollection.InsertOne(ctx, usr)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -33,8 +33,8 @@ func (app *ActivityApp) CreateUser(ctx context.Context, usr *pb.User) (*pb.Respo
 
 //CreateActivity adds an acitivity for the user
 func (app *ActivityApp) CreateActivity(ctx context.Context, creq *pb.CreateActivityRequest) (*pb.Response, error) {
-	userCollection := app.Db.Client.Database(app.Db.DbName).Collection("user")
-	activityCollection := app.Db.Client.Database(app.Db.DbName).Collection("activity")
+	userCollection := app.db.client.Database(app.db.dbName).Collection("user")
+	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 	usrPhone := creq.GetPhone()
 	if err := userCollection.FindOne(ctx, bson.M{"phone": usrPhone}).Err(); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -65,7 +65,7 @@ func (app *ActivityApp) CreateActivity(ctx context.Context, creq *pb.CreateActiv
 
 //UpdateActivity updates the attributes of an activity associated with user
 func (app *ActivityApp) UpdateActivity(ctx context.Context, uReq *pb.UpdateActivityRequest) (*pb.Response, error) {
-	activityCollection := app.Db.Client.Database(app.Db.DbName).Collection("activity")
+	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 	reqUnixTime := uReq.Time
 	reqTime := time.Unix(reqUnixTime, 0).UTC()
 	log.Println(reqTime.Location())
@@ -121,7 +121,7 @@ func (app *ActivityApp) UpdateActivity(ctx context.Context, uReq *pb.UpdateActiv
 //GetActivityStatus returns the result of executing  isDone,isValid methods of an activity
 func (app *ActivityApp) GetActivityStatus(ctx context.Context, sReq *pb.ActivityStatusRequest) (*pb.ActivityStatusResponse, error) {
 
-	activityCollection := app.Db.Client.Database(app.Db.DbName).Collection("activity")
+	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 
 	startTime, endTime := getStartAndEndOfDay(sReq.Time)
 	query := bson.D{
@@ -151,17 +151,28 @@ func (app *ActivityApp) GetActivityStatus(ctx context.Context, sReq *pb.Activity
 
 //GetUserActivities returns all the activities associated with the user on the specified date
 func (app *ActivityApp) GetUserActivities(ctx context.Context, uReq *pb.UserActivityRequest) (*pb.UserActivityResponse, error) {
-	activityCollection := app.Db.Client.Database(app.Db.DbName).Collection("activity")
-
+	var query primitive.D
+	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 	startTime, endTime := getStartAndEndOfDay(uReq.Time)
-	query := bson.D{
-		{"phone", uReq.Phone},
-		{"timestamp", bson.D{
-			{"$gte", startTime},
-			{"$lte", endTime},
-		}},
-	}
 
+	if uReq.Batch {
+		query = bson.D{
+			{"phone", uReq.Phone},
+			{"timestamp", bson.D{
+				{"$gte", startTime},
+				{"$lte", endTime},
+			}},
+		}
+	} else {
+		query = bson.D{
+			{"phone", uReq.Phone},
+			{"type", uReq.Type.String()},
+			{"timestamp", bson.D{
+				{"$gte", startTime},
+				{"$lte", endTime},
+			}},
+		}
+	}
 	cursor, queryErr := activityCollection.Find(ctx, query)
 	if queryErr != nil {
 		return nil, status.Errorf(codes.InvalidArgument, queryErr.Error())
@@ -190,7 +201,7 @@ func (app *ActivityApp) GetUserActivities(ctx context.Context, uReq *pb.UserActi
 //GetUsers returns all the users registered with this application
 func (app *ActivityApp) GetUsers(msg *pb.Empty, stream pb.ActivityAppService_GetUsersServer) error {
 	ctx := context.TODO()
-	userCollection := app.Db.Client.Database(app.Db.DbName).Collection("user")
+	userCollection := app.db.client.Database(app.db.dbName).Collection("user")
 	cursor, err := userCollection.Find(ctx, bson.D{})
 	defer cursor.Close(ctx)
 	if err != nil {
