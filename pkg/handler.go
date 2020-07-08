@@ -19,6 +19,7 @@ import (
 func (app *ActivityApp) CreateUser(ctx context.Context, usr *pb.User) (*pb.Response, error) {
 
 	userCollection := app.db.client.Database(app.db.dbName).Collection("user")
+
 	insertResult, err := userCollection.InsertOne(ctx, usr)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -33,20 +34,25 @@ func (app *ActivityApp) CreateUser(ctx context.Context, usr *pb.User) (*pb.Respo
 
 //CreateActivity adds an acitivity for the user
 func (app *ActivityApp) CreateActivity(ctx context.Context, creq *pb.CreateActivityRequest) (*pb.Response, error) {
+
+	var timestmp int64
+	//create the database collection objects
 	userCollection := app.db.client.Database(app.db.dbName).Collection("user")
 	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
-	usrPhone := creq.GetPhone()
-	if err := userCollection.FindOne(ctx, bson.M{"phone": usrPhone}).Err(); err != nil {
+
+	if err := userCollection.FindOne(ctx, bson.M{"phone": creq.GetPhone()}).Err(); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
-	var timestmp int64
+	//Check whether request have a timestamp if not create one
 	if creq.Activity.Timestamp != 0 {
 		timestmp = creq.Activity.Timestamp
 	} else {
 		timestmp = time.Now().UTC().Unix()
 	}
+
+	//Create an activity record for the given details
 	actRecord := ActivityRecord{
-		Phone:     usrPhone,
+		Phone:     creq.GetPhone(),
 		Timestamp: timestmp,
 		Type:      creq.Activity.Type.String(),
 		Status:    creq.Activity.Status,
@@ -66,23 +72,18 @@ func (app *ActivityApp) CreateActivity(ctx context.Context, creq *pb.CreateActiv
 //UpdateActivity updates the attributes of an activity associated with user
 func (app *ActivityApp) UpdateActivity(ctx context.Context, uReq *pb.UpdateActivityRequest) (*pb.Response, error) {
 	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
-	reqUnixTime := uReq.Time
-	reqTime := time.Unix(reqUnixTime, 0).UTC()
-	log.Println(reqTime.Location())
-	year, month, day := reqTime.Date()
-	log.Println(reqTime.Date())
-	strt := time.Date(year, month, day, 0, 0, 0, 0, time.UTC).Unix()
-	end := time.Date(year, month, day, 23, 59, 59, 0, time.UTC).Unix()
-
+	//Generate the Beginning and ending timestamps of the day
+	startTime, endTime := getStartAndEndOfDay(uReq.Time)
 	quer := bson.D{
 		{"phone", uReq.Phone},
 		{"type", uReq.Activity.Type.String()},
 		{"timestamp", bson.D{
-			{"$gte", strt},
-			{"$lte", end},
+			{"$gte", startTime},
+			{"$lte", endTime},
 		}},
 	}
 	var update primitive.D
+	//Identify the attribute that need to be modified
 	switch uReq.Parameter {
 	case pb.UpdateParam_STATUS:
 		update = bson.D{
@@ -105,7 +106,7 @@ func (app *ActivityApp) UpdateActivity(ctx context.Context, uReq *pb.UpdateActiv
 		}
 
 	}
-	log.Println(strt, end, reqTime.Unix())
+
 	updateErr := activityCollection.FindOneAndUpdate(ctx, quer, update).Err()
 	if updateErr != nil {
 		return nil, status.Errorf(codes.InvalidArgument, updateErr.Error())
@@ -136,9 +137,10 @@ func (app *ActivityApp) GetActivityStatus(ctx context.Context, sReq *pb.Activity
 	if queryResp.Err() != nil {
 		return nil, status.Errorf(codes.InvalidArgument, queryResp.Err().Error())
 	}
-	activityObj := getAcitivityObject(queryResp, sReq.Activitytype.String())
+	//Create an activity instance from the given details
+	activityObj := getActivityObject(queryResp, sReq.Activitytype.String())
 
-	log.Println(activityObj)
+	//execute the specified method on the activity
 	result, err := executeActivityMethod(activityObj, sReq.Method)
 	if err != nil {
 		return nil, err
@@ -152,6 +154,7 @@ func (app *ActivityApp) GetActivityStatus(ctx context.Context, sReq *pb.Activity
 //GetUserActivities returns all the activities associated with the user on the specified date
 func (app *ActivityApp) GetUserActivities(ctx context.Context, uReq *pb.UserActivityRequest) (*pb.UserActivityResponse, error) {
 	var query primitive.D
+	var resp pb.UserActivityResponse
 	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 	startTime, endTime := getStartAndEndOfDay(uReq.Time)
 
@@ -177,8 +180,8 @@ func (app *ActivityApp) GetUserActivities(ctx context.Context, uReq *pb.UserActi
 	if queryErr != nil {
 		return nil, status.Errorf(codes.InvalidArgument, queryErr.Error())
 	}
-	var resp pb.UserActivityResponse
 
+	//Iterate over all the queried records and generate the response
 	for cursor.Next(ctx) {
 		var record ActivityRecord
 
@@ -237,7 +240,7 @@ func executeActivityMethod(act UserActivity, method pb.StatusMethod) (bool, erro
 	}
 
 }
-func getAcitivityObject(res *mongo.SingleResult, acType string) UserActivity {
+func getActivityObject(res *mongo.SingleResult, acType string) UserActivity {
 	var activity UserActivity
 	var record ActivityRecord
 	res.Decode(&record)
