@@ -1,0 +1,89 @@
+syntax="proto3";
+
+
+package activityapp;
+
+enum ActivityType {
+
+    PLAY=0;
+    SLEEP=1;
+    EAT=2;
+    READ=3;
+   
+}
+enum UpdateParam{
+    STATUS=0;
+    DURATION=1;
+    BOTH=3;
+}
+enum StatusMethod{
+
+VALID=0;
+DONE=1;
+
+}
+
+message User {
+
+    string name=1;
+    string email=2;
+    string phone=3;
+
+}
+message Activity {
+
+    ActivityType type=1;
+    int64        timestamp=2;
+    bool         status=3;
+    uint64       duration=4;
+}
+
+message CreateActivityRequest{
+    Activity Activity=1;
+    string   Phone=2;   
+}
+
+message UpdateActivityRequest{
+    Activity Activity=1;
+    string Phone=2;
+    int64  Time=3;
+    UpdateParam Parameter=4;
+}
+
+message ActivityStatusRequest{
+    string       Phone=1;
+    ActivityType Activitytype=2;
+    StatusMethod Method=3;
+    int64        Time=4;
+    
+}
+message UserActivityRequest{
+
+    string Phone=1;
+    int64  Time=2;
+    ActivityType Type=3;
+    bool     batch=4;
+}
+
+message Response{
+
+    string message=1; 
+}
+message UserActivityResponse{
+    
+    repeated Activity activities=1;
+}
+message ActivityStatusResponse{
+  
+   bool  status=1; 
+} 
+
+message Empty {}
+service ActivityAppService {
+    rpc CreateUser(User) returns (Response){}
+    rpc CreateActivity(CreateActivityRequest) returns (Response){}  
+    rpc UpdateActivity(UpdateActivityRequest) returns (Response){}
+    rpc GetActivityStatus(ActivityStatusRequest) returns (ActivityStatusResponse){}
+    rpc GetUserActivities(UserActivityRequest) returns (UserActivityResponse){}
+    rpc GetUsers(Empty) returns (stream User){}
+}
