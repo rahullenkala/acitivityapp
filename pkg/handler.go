@@ -18,6 +18,12 @@ import (
 //CreateUser creates a user and adds the record to db
 func (app *ActivityApp) CreateUser(ctx context.Context, usr *pb.User) (*pb.Response, error) {
 
+	if inputErr := validPhone(usr.Phone); inputErr != nil {
+		return nil, inputErr
+	}
+	if usr.Name == "" {
+		return nil, &RequestError{ErrCode: 200, ErrMessage: "Invalid name"}
+	}
 	userCollection := app.db.client.Database(app.db.dbName).Collection("user")
 
 	insertResult, err := userCollection.InsertOne(ctx, usr)
@@ -34,6 +40,10 @@ func (app *ActivityApp) CreateUser(ctx context.Context, usr *pb.User) (*pb.Respo
 
 //CreateActivity adds an acitivity for the user
 func (app *ActivityApp) CreateActivity(ctx context.Context, creq *pb.CreateActivityRequest) (*pb.Response, error) {
+
+	if inputErr := validPhone(creq.Phone); inputErr != nil {
+		return nil, inputErr
+	}
 
 	var timestmp int64
 	//create the database collection objects
@@ -71,6 +81,9 @@ func (app *ActivityApp) CreateActivity(ctx context.Context, creq *pb.CreateActiv
 
 //UpdateActivity updates the attributes of an activity associated with user
 func (app *ActivityApp) UpdateActivity(ctx context.Context, uReq *pb.UpdateActivityRequest) (*pb.Response, error) {
+	if inputErr := validPhone(uReq.Phone); inputErr != nil {
+		return nil, inputErr
+	}
 	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 	//Generate the Beginning and ending timestamps of the day
 	startTime, endTime := getStartAndEndOfDay(uReq.Time)
@@ -121,7 +134,9 @@ func (app *ActivityApp) UpdateActivity(ctx context.Context, uReq *pb.UpdateActiv
 
 //GetActivityStatus returns the result of executing  isDone,isValid methods of an activity
 func (app *ActivityApp) GetActivityStatus(ctx context.Context, sReq *pb.ActivityStatusRequest) (*pb.ActivityStatusResponse, error) {
-
+	if inputErr := validPhone(sReq.Phone); inputErr != nil {
+		return nil, inputErr
+	}
 	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 
 	startTime, endTime := getStartAndEndOfDay(sReq.Time)
@@ -155,6 +170,12 @@ func (app *ActivityApp) GetActivityStatus(ctx context.Context, sReq *pb.Activity
 func (app *ActivityApp) GetUserActivities(ctx context.Context, uReq *pb.UserActivityRequest) (*pb.UserActivityResponse, error) {
 	var query primitive.D
 	var resp pb.UserActivityResponse
+
+	//We can still enhance the error model by using grpc errdetails package
+	if inputErr := validPhone(uReq.Phone); inputErr != nil {
+		return nil, inputErr
+	}
+
 	activityCollection := app.db.client.Database(app.db.dbName).Collection("activity")
 
 	startTime, endTime := getStartAndEndOfDay(uReq.Time)
@@ -204,6 +225,7 @@ func (app *ActivityApp) GetUserActivities(ctx context.Context, uReq *pb.UserActi
 
 //GetUsers returns all the users registered with this application
 func (app *ActivityApp) GetUsers(msg *pb.Empty, stream pb.ActivityAppService_GetUsersServer) error {
+
 	ctx := context.TODO()
 	userCollection := app.db.client.Database(app.db.dbName).Collection("user")
 	cursor, err := userCollection.Find(ctx, bson.D{})
@@ -240,6 +262,12 @@ func executeActivityMethod(act UserActivity, method pb.StatusMethod) (bool, erro
 		return false, errors.New("Invalid method")
 	}
 
+}
+func validPhone(phone string) error {
+	if phone == "" || len(phone) != 10 {
+		return &RequestError{ErrCode: 100, ErrMessage: "Invalid User Phone"}
+	}
+	return nil
 }
 func getActivityObject(res *mongo.SingleResult, acType string) UserActivity {
 	var activity UserActivity

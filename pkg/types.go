@@ -2,6 +2,7 @@ package activityapp
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -121,12 +122,23 @@ func NewDataBase(dbURL string, dbName string) *DataBase {
 	_, indexerr := client.Database(dbName).Collection("user").Indexes().CreateOne(
 		context.Background(),
 		mongo.IndexModel{
-			Keys:    bsonx.Doc{{"phone", bsonx.Int32(1)}, {"type", bsonx.Int32(1)}},
+			Keys:    bsonx.Doc{{"phone", bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
 	)
 	if indexerr != nil {
 		log.Fatal(indexerr)
+	}
+
+	_, indexerr1 := client.Database(dbName).Collection("activity").Indexes().CreateOne(
+		context.Background(),
+		mongo.IndexModel{
+			Keys:    bsonx.Doc{{"phone", bsonx.Int32(1)}, {"type", bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+	if indexerr1 != nil {
+		log.Fatal(indexerr1)
 	}
 	db := &DataBase{
 		client: client,
@@ -140,4 +152,13 @@ func NewApp(db *DataBase) *ActivityApp {
 	return &ActivityApp{
 		db: db,
 	}
+}
+
+type RequestError struct {
+	ErrCode    int
+	ErrMessage string
+}
+
+func (r *RequestError) Error() string {
+	return fmt.Sprintf("Error occurred with error_code %v and error_message %v", r.ErrCode, r.ErrMessage)
 }
