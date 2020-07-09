@@ -171,7 +171,7 @@ Following are the definitions of UserActivity Request/Response
 	    repeated Activity activities=1;
     }
     #Example
-    request,response:=appService.GetUserActivities(ctx,&pb.UserActivityRequest{
+    response,err:=appService.GetUserActivities(ctx,&pb.UserActivityRequest{
 				Phone: "0987654321",
 				Time: 1234567,
 				Type: pb.ActivityType_EAT,
