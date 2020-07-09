@@ -98,6 +98,7 @@ func main() {
 				Type:     pb.ActivityType(option),
 				Duration: duration,
 			}
+			
 			response, creationerr := appService.CreateActivity(ctx, &pb.CreateActivityRequest{
 				Activity: act,
 				Phone:    Phone,
@@ -108,6 +109,7 @@ func main() {
 			log.Println("Activity Created", response)
 
 		case "3\n":
+			
 			stream, streamErr := appService.GetUsers(ctx, &pb.Empty{})
 			if err != nil {
 				log.Fatal(streamErr)
