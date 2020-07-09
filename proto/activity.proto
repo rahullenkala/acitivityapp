@@ -57,6 +57,10 @@ message ActivityStatusRequest{
     int64        Time=4;
     
 }
+message Response{
+
+    string message=1; 
+}
 message UserActivityRequest{
 
     string Phone=1;
@@ -65,10 +69,7 @@ message UserActivityRequest{
     bool     batch=4;
 }
 
-message Response{
 
-    string message=1; 
-}
 message UserActivityResponse{
     
     repeated Activity activities=1;
