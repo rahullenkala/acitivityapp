@@ -16,10 +16,9 @@ This implementation at present supports only four activities namely ***PLAY***,*
 
 ## Environment
 This application uses following tech stack 
-Language: [Golang](https://golang.org/doc/install) 
-Database:  	&nbsp; [MongoDB](https://godoc.org/go.mongodb.org/mongo-driver/mongo) 
-Communication: [gRPC](https://grpc.io/docs/languages/go/quickstart/)  
-Message Formats: [ProtoBuffer](https://developers.google.com/protocol-buffers)
+<br>Language: [Golang](https://golang.org/doc/install) 
+<br>Database:   [MongoDB](https://godoc.org/go.mongodb.org/mongo-driver/mongo) 
+<br>Communication: [gRPC](https://grpc.io/docs/languages/go/quickstart)<br>Message Formats: [ProtoBuffer](https://developers.google.com/protocol-buffers)
 
  
 ## Getting Started
